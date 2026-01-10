@@ -5,61 +5,52 @@
 #define TFT_DC 9
 #define TFT_CS 10
 #define TFT_RST 8
+#define ANALOG_PIN A0
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
-const int graphWidth = 320;
-const int graphHeight = 200;
-int dataPoints[graphWidth]; // Array to store past voltage readings
-int xPos = 0;
-const int bufferSize = 320; 
+const int bufferSize = 320; // One point for every pixel of width
 int samples[bufferSize];
+int oldSamples[bufferSize];
 
 
 void setup() {
-  tft.begin();
-  tft.setRotation(1); // Landscape
+  tft.begin(8000000L); // Force max SPI speed (8MHz) for Nano
+  tft.setRotation(1);
   tft.fillScreen(ILI9341_BLACK);
-
-  // This increases sampling from ~9.6kHz to ~77kHz
-  // ADPS2=1, ADPS1=0, ADPS0=0 sets the ADC prescaler to 16
-  ADCSRA &= ~(1 << ADPS2); // Clear ADPS2
-  ADCSRA &= ~(1 << ADPS1); // Clear ADPS1
-  ADCSRA &= ~(1 << ADPS0); // Clear ADPS0
-  ADCSRA |= (1 << ADPS2);  // Set ADPS2 to 1 for prescaler 16
   
-  // Initialize the array with 0
-  for (int i = 0; i < graphWidth; i++) {
-    dataPoints[i] = graphHeight; // Bottom of graph
-  }
+  // Speed up ADC sampling (Prescaler 16 = ~77kHz)
+  ADCSRA = (ADCSRA & 0xf8) | 0x04; 
 
+  // set pwm pin for testing
   pinMode(3, OUTPUT);
-  analogWrite(3, 64);
+  analogWrite(3,127);
 }
 
 
 void loop() {
-  // Fast sampling burst: filling the buffer at max speed
+  // 1. Trigger: Wait for rising edge to stabilize wave
+  while(analogRead(ANALOG_PIN) > 100); // Wait for signal to be LOW
+  while(analogRead(ANALOG_PIN) < 500); // Wait for signal to go HIGH
+
+  // 2. High-Speed Capture
   for (int i = 0; i < bufferSize; i++) {
-    samples[i] = analogRead(A0);
+    samples[i] = analogRead(ANALOG_PIN);
   }
 
-  // Rapidly plot the buffer to the screen
-  tft.fillScreen(ILI9341_BLACK); // Optional: clear once per burst
+  // 3. Draw & Erase (Avoid fillScreen to stop flickering)
   for (int i = 0; i < bufferSize - 1; i++) {
-    int y0 = map(samples[i], 0, 1023, 200, 0);
-    int y1 = map(samples[i+1], 0, 1023, 200, 0);
-    tft.drawLine(i, y0, i + 1, y1, ILI9341_GREEN);
+    // Erase old line
+    int yOld0 = map(oldSamples[i], 0, 1023, 200, 40);
+    int yOld1 = map(oldSamples[i+1], 0, 1023, 200, 40);
+    tft.drawLine(i, yOld0, i + 1, yOld1, ILI9341_BLACK);
+
+    // Draw new line
+    int yNew0 = map(samples[i], 0, 1023, 200, 40);
+    int yNew1 = map(samples[i+1], 0, 1023, 200, 40);
+    tft.drawLine(i, yNew0, i + 1, yNew1, ILI9341_GREEN);
+    
+    // Store for next erase cycle
+    oldSamples[i] = samples[i];
   }
-
-  // // Display numeric voltage at the top
-  // tft.setCursor(10, 210);
-  // tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
-  // tft.setTextSize(2);
-  // tft.print("Voltage: ");
-  // tft.print(raw * (5.0 / 1023.0));
-  // tft.print("V  ");
-
-  // delay(20); // Adjust for desired scroll speed
 }
-
