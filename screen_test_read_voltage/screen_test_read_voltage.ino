@@ -13,6 +13,9 @@ const int bufferSize = 320; // One point for every pixel of width
 int samples[bufferSize];
 int oldSamples[bufferSize];
 float max_voltage = 5;
+int grid_bound_top = 20;
+int grid_bound_bottom = 215;
+int grid_height = grid_bound_bottom - grid_bound_top;
 
 
 void setup() {
@@ -29,7 +32,7 @@ void setup() {
   pinMode(3, OUTPUT);
   analogWrite(3,127);
 
-  drawGrid(/*num_divisions*/ 6, /*max_voltage*/ max_voltage);
+  drawGrid(/*num_divisions*/ 4, /*max_voltage*/ max_voltage);
   tft.setCursor(1, 225);
   tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
   tft.setTextSize(2);
@@ -43,19 +46,19 @@ void loop() {
 
 
 void drawGrid(int num_div, float max_voltage) {
-  int pix_per_div = 240/num_div;
-  int cursor_y = -1;//some reason it can't plot at certain even values..
-  float voltage_step = max_voltage/(num_div-2);
-  for(int i = 0; i < num_div-1; i += 1){
-    cursor_y += pix_per_div;
-    //Serial.print("drawing line at: ");
-    //Serial.println(cursor);
+  int pix_per_div = grid_height/num_div;
+  int cursor_y = grid_bound_top - 1;//some reason it can't plot at certain even values..
+  float voltage_step = max_voltage/num_div;
+  for(int i = 0; i <= num_div; i += 1){
+    Serial.print("drawing line at: ");
+    Serial.println(cursor_y);
     tft.drawFastHLine(0, cursor_y, 320, ILI9341_RED);
     tft.setCursor(1, cursor_y - 8);
     tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
     tft.setTextSize(1);
     tft.print(String(max_voltage) + "V");
     max_voltage-=voltage_step;
+    cursor_y += pix_per_div;
   }
 }
 
@@ -73,13 +76,13 @@ void capture_data(){
   // 3. Draw & Erase (Avoid fillScreen to stop flickering)
   for (int i = 0; i < bufferSize - 1; i++) {
     // Erase old line
-    int yOld0 = map(oldSamples[i], 0, 1023, 200, 40);
-    int yOld1 = map(oldSamples[i+1], 0, 1023, 200, 40);
+    int yOld0 = map(oldSamples[i], 0, 1023, grid_bound_bottom, grid_bound_top);
+    int yOld1 = map(oldSamples[i+1], 0, 1023, grid_bound_bottom, grid_bound_top);
     tft.drawLine(i, yOld0, i + 1, yOld1, ILI9341_BLACK);
 
     // Draw new line
-    int yNew0 = map(samples[i], 0, 1023, 200, 40);
-    int yNew1 = map(samples[i+1], 0, 1023, 200, 40);
+    int yNew0 = map(samples[i], 0, 1023, grid_bound_bottom, grid_bound_top);
+    int yNew1 = map(samples[i+1], 0, 1023, grid_bound_bottom, grid_bound_top);
     tft.drawLine(i, yNew0, i + 1, yNew1, ILI9341_YELLOW);
     
     // Store for next erase cycle
