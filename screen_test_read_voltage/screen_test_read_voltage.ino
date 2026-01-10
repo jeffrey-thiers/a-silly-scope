@@ -25,6 +25,26 @@ void setup() {
   // set pwm pin for testing
   pinMode(3, OUTPUT);
   analogWrite(3,127);
+
+  // Draw grid
+  tft.setCursor(1, 32);
+  tft.setTextColor(ILI9341_RED);
+  tft.setTextSize(1);
+  tft.println("5V");
+  tft.drawFastHLine(0, 40, 320, ILI9341_RED);
+
+  tft.setCursor(1, 112);
+  tft.setTextColor(ILI9341_RED);
+  tft.setTextSize(1);
+  tft.println("2.5V");
+  tft.drawFastHLine(0, 120, 320, ILI9341_RED);
+
+  tft.setCursor(1, 192);
+  tft.setTextColor(ILI9341_RED);
+  tft.setTextSize(1);
+  tft.println("0V");
+  tft.drawFastHLine(0, 201, 320, ILI9341_RED);
+    
 }
 
 
