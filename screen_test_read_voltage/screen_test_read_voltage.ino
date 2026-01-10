@@ -32,6 +32,7 @@ void setup() {
   pinMode(3, OUTPUT);
   analogWrite(3,127);
 
+  //Draw grid
   drawGrid(/*num_divisions*/ 4, /*max_voltage*/ max_voltage);
   tft.setCursor(1, 225);
   tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
@@ -41,7 +42,9 @@ void setup() {
 
 
 void loop() {
-  capture_data();
+  int pot_value = getSmoothReading(A6);
+  capture_data(pot_value);
+  drawGrid(/*num_divisions*/ 4, /*max_voltage*/ max_voltage);
 }
 
 
@@ -50,20 +53,19 @@ void drawGrid(int num_div, float max_voltage) {
   int cursor_y = grid_bound_top - 1;//some reason it can't plot at certain even values..
   float voltage_step = max_voltage/num_div;
   for(int i = 0; i <= num_div; i += 1){
-    Serial.print("drawing line at: ");
-    Serial.println(cursor_y);
+    //Serial.print("drawing line at: ");
+    //Serial.println(cursor_y);
     tft.drawFastHLine(0, cursor_y, 320, ILI9341_RED);
     tft.setCursor(1, cursor_y - 8);
     tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
-    tft.setTextSize(1);
-    tft.print(String(max_voltage) + "V");
-    max_voltage-=voltage_step;
+    tft.setTextSize(1);    
+    tft.print(String(max_voltage - i*voltage_step) + "V");
     cursor_y += pix_per_div;
   }
 }
 
 
-void capture_data(){
+void capture_data(int time_scale){
   // 1. Trigger: Wait for rising edge to stabilize wave
   while(analogRead(ANALOG_PIN) > 100); // Wait for signal to be LOW
   while(analogRead(ANALOG_PIN) < 500); // Wait for signal to go HIGH
@@ -72,16 +74,14 @@ void capture_data(){
   unsigned long start_time = micros();
   for (int i = 0; i < bufferSize; i++) {
     samples[i] = analogRead(ANALOG_PIN);
-    delayMicroseconds(10);
+    delayMicroseconds(time_scale);
   }
 
   unsigned long delta_time = micros() - start_time;
   tft.setCursor(190, 225);
   tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
   tft.setTextSize(2);
-  // tft.print("dt: ");
   tft.print("dt: " + String(delta_time / 1000.0, 2) + "ms"); // Convert to milliseconds
-  // tft.print(" ms");
 
   // 3. Draw & Erase (Avoid fillScreen to stop flickering)
   for (int i = 0; i < bufferSize - 1; i++) {
@@ -98,4 +98,15 @@ void capture_data(){
     // Store for next erase cycle
     oldSamples[i] = samples[i];
   } 
+}
+
+
+int getSmoothReading(int pin) {
+  long sum = 0;
+  int numReadings = 10; // Increase this for more smoothing
+  for (int i = 0; i < numReadings; i++) {
+    sum += analogRead(pin);
+    delayMicroseconds(50); // Small delay for ADC stability
+  }
+  return map((sum / numReadings), 0, 1023, 0, 100);
 }
