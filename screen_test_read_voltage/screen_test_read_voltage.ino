@@ -14,7 +14,7 @@ int samples[bufferSize];
 int oldSamples[bufferSize];
 float max_voltage = 5;
 int grid_bound_top = 20;
-int grid_bound_bottom = 215;
+int grid_bound_bottom = 210;
 int grid_height = grid_bound_bottom - grid_bound_top;
 
 
@@ -36,7 +36,7 @@ void setup() {
   tft.setCursor(1, 225);
   tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
   tft.setTextSize(2);
-  tft.print("Input max: " + String(max_voltage) + "V");
+  tft.print("max V: " + String(max_voltage) + "V");
 }
 
 
@@ -69,9 +69,19 @@ void capture_data(){
   while(analogRead(ANALOG_PIN) < 500); // Wait for signal to go HIGH
 
   // 2. High-Speed Capture
+  unsigned long start_time = micros();
   for (int i = 0; i < bufferSize; i++) {
     samples[i] = analogRead(ANALOG_PIN);
+    delayMicroseconds(10);
   }
+
+  unsigned long delta_time = micros() - start_time;
+  tft.setCursor(190, 225);
+  tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
+  tft.setTextSize(2);
+  // tft.print("dt: ");
+  tft.print("dt: " + String(delta_time / 1000.0, 2) + "ms"); // Convert to milliseconds
+  // tft.print(" ms");
 
   // 3. Draw & Erase (Avoid fillScreen to stop flickering)
   for (int i = 0; i < bufferSize - 1; i++) {
