@@ -125,14 +125,14 @@ void updateGridBounds() {
 
   // Use a "Deadzone" or Hysteresis (e.g., a change of at least 3)
   // This prevents the screen from flickering due to tiny noise fluctuations
-  if (abs(raw - last_raw_A5) > 5) {
+  if (abs(raw - last_raw_A5) > 10) {
     last_raw_A5 = raw;
     //erase current grid
     drawGrid(/*num_divisions*/ 4, /*max_voltage*/ max_voltage, /*color*/ ILI9341_BLACK);  
     
     // Map to your desired range (e.g., 0-100)
-    grid_bound_top = map(raw, 0, 1023, 120, -120);
-    grid_bound_bottom = map(raw, 0, 1023, 215, 335);
+    grid_bound_top = map(raw, 0, 1023, 30, -120);
+    grid_bound_bottom = map(raw, 0, 1023, 190, 340);
   }
 }
 
