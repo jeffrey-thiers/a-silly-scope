@@ -16,7 +16,6 @@ int oldY[bufferSize];
 float max_voltage = 5;
 int grid_bound_top =10;
 int grid_bound_bottom = 210;
-int grid_height = grid_bound_bottom - grid_bound_top;
 int pot_value = 0;
 int last_raw_A5 = 0;
 int last_raw_A6 = 0;
@@ -42,17 +41,22 @@ void setup() {
 void loop() {
   updateGridBounds();
   updateTimeBounds();
+  drawGrid(/*num divisions*/ 4, /*max voltage*/ max_voltage, /*color*/ ILI9341_RED);
   capture_data();
 }
 
 
 void drawGrid(int num_div, float max_voltage, uint16_t color) {
-  int pix_per_div = grid_height/num_div;
+  int pix_per_div = (grid_bound_bottom - grid_bound_top)/num_div;
   int cursor_y = grid_bound_top - 1;//some reason it can't plot at certain even values..
   float voltage_step = max_voltage/num_div;
   for(int i = 0; i <= num_div; i += 1){
-    //Serial.print("drawing line at: ");
-    //Serial.println(cursor_y);
+    
+    //Serial.print("grid bound top: ");
+    //Serial.println(grid_bound_top);
+    //Serial.print("grid bound bottom: ");
+    //Serial.println(grid_bound_bottom);
+
     tft.drawFastHLine(0, cursor_y, 320, color);
     tft.setCursor(1, cursor_y - 8);
     tft.setTextColor(color, ILI9341_BLACK);
@@ -128,10 +132,7 @@ void updateGridBounds() {
     
     // Map to your desired range (e.g., 0-100)
     grid_bound_top = map(raw, 0, 1023, 120, -120);
-    grid_bound_bottom = map(raw, 0, 1023, 210, 330);
-    
-    // Update the UI only when the value actually changes
-    drawGrid(/*num divisions*/ 4, /*max voltage*/ max_voltage, /*color*/ ILI9341_RED);
+    grid_bound_bottom = map(raw, 0, 1023, 215, 335);
   }
 }
 
