@@ -18,9 +18,9 @@ int grid_bound_top =10;
 int grid_bound_bottom = 210;
 int grid_height = grid_bound_bottom - grid_bound_top;
 int pot_value = 0;
-int last_raw = 0;
-int last_grid_bound_top = 10;
-int last_grid_bound_bottom = 210;
+int last_raw_A5 = 0;
+int last_raw_A6 = 0;
+int time_scale = 0;
 
 
 void setup() {
@@ -36,20 +36,13 @@ void setup() {
   // set pwm pin for testing
   pinMode(3, OUTPUT);
   analogWrite(3,127);
-
-  //Draw grid
-  //drawGrid(/*num_divisions*/ 4, /*max_voltage*/ max_voltage, "ILI9341_RED");
-  tft.setCursor(1, 225);
-  tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
-  tft.setTextSize(2);
-  tft.print("max V: " + String(max_voltage) + "V");
 }
 
 
 void loop() {
-  pot_value = getSmoothReading(A6);
   updateGridBounds();
-  capture_data(pot_value);
+  updateTimeBounds();
+  capture_data();
 }
 
 
@@ -67,10 +60,16 @@ void drawGrid(int num_div, float max_voltage, uint16_t color) {
     tft.print(String(max_voltage - i*voltage_step) + "V");
     cursor_y += pix_per_div;
   }
+  
+  // write some data on the screen
+  tft.setCursor(1, 225);
+  tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
+  tft.setTextSize(2);
+  tft.print("max V: " + String(max_voltage) + "V");
 }
 
 
-void capture_data(int time_scale){
+void capture_data(){
   // 1. Trigger: Wait for rising edge to stabilize wave
   while(analogRead(ANALOG_PIN) > 100); // Wait for signal to be LOW
   while(analogRead(ANALOG_PIN) < 500); // Wait for signal to go HIGH
@@ -91,9 +90,6 @@ void capture_data(int time_scale){
   // 3. Draw & Erase (Avoid fillScreen to stop flickering)
   for (int i = 0; i < bufferSize - 1; i++) {
     // Erase old line
-    //int yOld0 = map(oldSamples[i], 0, 1023, last_grid_bound_bottom, last_grid_bound_top);
-    //int yOld1 = map(oldSamples[i+1], 0, 1023, last_grid_bound_bottom, last_grid_bound_top);
-    //tft.drawLine(i, yOld0, i + 1, yOld1, ILI9341_BLACK);
     tft.drawLine(i, oldY[i], i + 1, oldY[i+1], ILI9341_BLACK);
 
     // Draw new line
@@ -102,59 +98,21 @@ void capture_data(int time_scale){
     tft.drawLine(i, yNew0, i + 1, yNew1, ILI9341_YELLOW);
     
     // Store for next erase cycle
-    //oldSamples[i] = samples[i];
     oldY[i] = yNew0;
     if (i == bufferSize - 2) oldY[i+1] = yNew1; // Store the very last point
   }
 }
 
-void capture_data(){
-    // 1. Trigger: Wait for rising edge to stabilize wave
-  while(analogRead(ANALOG_PIN) > 100); // Wait for signal to be LOW
-  while(analogRead(ANALOG_PIN) < 500); // Wait for signal to go HIGH
 
-  // 2. High-Speed Capture
-  unsigned long start_time = micros();
-  for (int i = 0; i < bufferSize; i++) {
-    samples[i] = analogRead(ANALOG_PIN);
-    //delayMicroseconds(time_scale);
+void updateTimeBounds() {  
+  int raw = analogRead(A6);
+
+  // Use a "Deadzone" or Hysteresis (e.g., a change of at least 3)
+  // This prevents the screen from flickering due to tiny noise fluctuations
+  if (abs(raw - last_raw_A6) > 5) {
+    last_raw_A6 = raw;
+    time_scale = map(raw, 0, 1023, 0, 120);
   }
-
-  unsigned long delta_time = micros() - start_time;
-  tft.setCursor(190, 225);
-  tft.setTextColor(ILI9341_RED, ILI9341_BLACK);
-  tft.setTextSize(2);
-  tft.print("dt: " + String(delta_time / 1000.0, 2) + "ms"); // Convert to milliseconds
-}
-
-void erase_data(){
-  for (int i = 0; i < bufferSize - 1; i++) {
-    // Erase old line
-    int yOld0 = map(oldSamples[i], 0, 1023, last_grid_bound_bottom, last_grid_bound_top);
-    int yOld1 = map(oldSamples[i+1], 0, 1023, last_grid_bound_bottom, last_grid_bound_top);
-    tft.drawLine(i, yOld0, i + 1, yOld1, ILI9341_BLACK);
-  }
-}
-
-void draw_data(){
-  for (int i = 0; i < bufferSize - 1; i++) {
-    // Draw new line
-    int yNew0 = map(samples[i], 0, 1023, grid_bound_bottom, grid_bound_top);
-    int yNew1 = map(samples[i+1], 0, 1023, grid_bound_bottom, grid_bound_top);
-    tft.drawLine(i, yNew0, i + 1, yNew1, ILI9341_YELLOW);
-    oldSamples[i] = samples[i];
-  }
-}
-
-
-int getSmoothReading(int pin) {
-  long sum = 0;
-  int numReadings = 10; // Increase this for more smoothing
-  for (int i = 0; i < numReadings; i++) {
-    sum += analogRead(pin);
-    delayMicroseconds(50); // Small delay for ADC stability
-  }
-  return map((sum / numReadings), 0, 1023, 0, 100);
 }
 
 
@@ -163,14 +121,10 @@ void updateGridBounds() {
 
   // Use a "Deadzone" or Hysteresis (e.g., a change of at least 3)
   // This prevents the screen from flickering due to tiny noise fluctuations
-  if (abs(raw - last_raw) > 5) {
-    last_raw = raw;
+  if (abs(raw - last_raw_A5) > 5) {
+    last_raw_A5 = raw;
     //erase current grid
-    drawGrid(/*num_divisions*/ 4, /*max_voltage*/ max_voltage, /*color*/ ILI9341_BLACK);
-    
-    //store previous variables for erasing other data.
-    last_grid_bound_top = grid_bound_top;
-    last_grid_bound_bottom = grid_bound_bottom;
+    drawGrid(/*num_divisions*/ 4, /*max_voltage*/ max_voltage, /*color*/ ILI9341_BLACK);  
     
     // Map to your desired range (e.g., 0-100)
     grid_bound_top = map(raw, 0, 1023, 120, -120);
