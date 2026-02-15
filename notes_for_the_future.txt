@@ -1,0 +1,4 @@
+I ran into an issue with the soldered unit where it couldn't get into the loop. 
+I think it's because the voltage for the screen is supposed to be 3.3V not 5V.
+For some reason it works on the breadboard unit but not on the soldered one. Maybe more resistance in the traces?
+If I were to take this further, I'd add a 3.3V rail somehow. Maybe use a different arduino that has a dedicated 3.3V rail.
